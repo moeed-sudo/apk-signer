@@ -1,1 +1,45 @@
+name: APK Signer
 
+on:
+  workflow_dispatch:
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt update && sudo apt install -y openjdk-17-jdk zipalign apksigner
+
+      - name: Generate Keystore
+        run: |
+          keytool -genkeypair -v \
+          -keystore keystore.jks \
+          -alias myalias \
+          -keyalg RSA \
+          -keysize 2048 \
+          -validity 10000 \
+          -storepass 123456 \
+          -keypass 123456 \
+          -dname "CN=Test, OU=Dev, O=Org, L=City, S=State, C=US"
+
+      - name: Align APK
+        run: zipalign -v 4 app.apk aligned.apk
+
+      - name: Sign APK
+        run: |
+          apksigner sign \
+            --ks keystore.jks \
+            --ks-key-alias myalias \
+            --ks-pass pass:123456 \
+            --key-pass pass:123456 \
+            --out signed.apk \
+            aligned.apk
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-apk
+          path: signed.apk
